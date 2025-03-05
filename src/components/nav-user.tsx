@@ -1,6 +1,7 @@
 'use client';
 
 import { BadgeCheck, Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles } from 'lucide-react';
+import { env } from '@/config/env';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -48,7 +49,7 @@ export function NavUser() {
 
   const handleChangePassword = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
-    redirect(`https://dev-auth.victorcornejo.com/realms/byteflow/account`);
+    redirect(`/api/auth/change-password`);
   };
 
   return (
