@@ -101,9 +101,12 @@ const formSchema = z
     phone: z.string().min(8, {
       message: 'El teléfono debe tener al menos 8 dígitos.',
     }),
-    email: z.string().email({
-      message: 'Correo electrónico inválido.',
-    }),
+    email: z
+      .string()
+      .email({
+        message: 'Correo electrónico inválido.',
+      })
+      .optional(),
   })
   .refine(
     (data) => {
