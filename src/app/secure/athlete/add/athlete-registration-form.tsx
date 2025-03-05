@@ -49,38 +49,48 @@ const sportTypes = [
   },
 ] as const;
 
-const formSchema = z.object({
-  sports: z.array(z.string()).refine((value) => value.length > 0, {
-    message: 'Debes seleccionar al menos un deporte.',
-  }),
-  applicantName: z.string().min(2, {
-    message: 'El nombre debe tener al menos 2 caracteres.',
-  }),
-  birthDate: z.date({
-    required_error: 'La fecha de nacimiento es requerida.',
-  }),
-  fatherName: z.string().min(2, {
-    message: 'El nombre del padre debe tener al menos 2 caracteres.',
-  }),
-  motherName: z.string().min(2, {
-    message: 'El nombre de la madre debe tener al menos 2 caracteres.',
-  }),
-  address: z.string().min(5, {
-    message: 'La dirección debe tener al menos 5 caracteres.',
-  }),
-  department: z.string().min(2, {
-    message: 'El departamento es requerido.',
-  }),
-  emergencyContact: z.string().min(2, {
-    message: 'El contacto de emergencia es requerido.',
-  }),
-  phone: z.string().min(8, {
-    message: 'El teléfono debe tener al menos 8 dígitos.',
-  }),
-  email: z.string().email({
-    message: 'Correo electrónico inválido.',
-  }),
-});
+const formSchema = z
+  .object({
+    sports: z.array(z.string()).refine((value) => value.length > 0, {
+      message: 'Debes seleccionar al menos un deporte.',
+    }),
+    applicantName: z.string().min(2, {
+      message: 'El nombre debe tener al menos 2 caracteres.',
+    }),
+    birthDate: z.date({
+      required_error: 'La fecha de nacimiento es requerida.',
+    }),
+    fatherName: z.string().optional(),
+    motherName: z.string().optional(),
+    address: z.string().min(5, {
+      message: 'La dirección debe tener al menos 5 caracteres.',
+    }),
+    department: z.string().min(2, {
+      message: 'El departamento es requerido.',
+    }),
+    emergencyContact: z.string().min(2, {
+      message: 'El contacto de emergencia es requerido.',
+    }),
+    phone: z.string().min(8, {
+      message: 'El teléfono debe tener al menos 8 dígitos.',
+    }),
+    email: z.string().email({
+      message: 'Correo electrónico inválido.',
+    }),
+  })
+  .refine(
+    (data) => {
+      const age = new Date().getFullYear() - data.birthDate.getFullYear();
+      if (age < 18) {
+        return data.fatherName || data.motherName;
+      }
+      return true;
+    },
+    {
+      message: 'El nombre del padre ó de la madre son obligatorios para menores de 18 años.',
+      path: ['fatherName'],
+    },
+  );
 
 type FormValues = z.infer<typeof formSchema>;
 
