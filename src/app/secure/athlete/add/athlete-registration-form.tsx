@@ -1,15 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { CalendarIcon } from 'lucide-react';
+import { differenceInYears } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import {
   Form,
   FormControl,
@@ -20,11 +17,16 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const sportTypes = [
   {
@@ -57,9 +59,34 @@ const formSchema = z
     applicantName: z.string().min(2, {
       message: 'El nombre debe tener al menos 2 caracteres.',
     }),
-    birthDate: z.date({
-      required_error: 'La fecha de nacimiento es requerida.',
-    }),
+    birthDay: z.string().refine(
+      (val) => {
+        const day = parseInt(val, 10);
+        return day >= 1 && day <= 31;
+      },
+      {
+        message: 'Día inválido',
+      },
+    ),
+    birthMonth: z.string().refine(
+      (val) => {
+        const month = parseInt(val, 10);
+        return month >= 1 && month <= 12;
+      },
+      {
+        message: 'Mes inválido',
+      },
+    ),
+    birthYear: z.string().refine(
+      (val) => {
+        const year = parseInt(val, 10);
+        const currentYear = new Date().getFullYear();
+        return year >= 1900 && year <= currentYear;
+      },
+      {
+        message: 'Año inválido',
+      },
+    ),
     fatherName: z.string().optional(),
     motherName: z.string().optional(),
     address: z.string().min(5, {
@@ -80,14 +107,16 @@ const formSchema = z
   })
   .refine(
     (data) => {
-      const age = new Date().getFullYear() - data.birthDate.getFullYear();
-      if (age < 18) {
-        return data.fatherName || data.motherName;
-      }
-      return true;
+      const birthDate = new Date(
+        Number.parseInt(data.birthYear),
+        Number.parseInt(data.birthMonth) - 1,
+        Number.parseInt(data.birthDay),
+      );
+      const age = differenceInYears(new Date(), birthDate);
+      return !(age < 18 && !data.fatherName && !data.motherName);
     },
     {
-      message: 'El nombre del padre ó de la madre son obligatorios para menores de 18 años.',
+      message: 'Para menores de 18 años, se requiere el nombre de al menos uno de los padres.',
       path: ['fatherName'],
     },
   );
@@ -96,12 +125,16 @@ type FormValues = z.infer<typeof formSchema>;
 
 export function AthleteRegistrationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [age, setAge] = useState<number | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       sports: [],
       applicantName: '',
+      birthDay: '',
+      birthMonth: '',
+      birthYear: '',
       fatherName: '',
       motherName: '',
       address: '',
@@ -112,12 +145,52 @@ export function AthleteRegistrationForm() {
     },
   });
 
+  const watchBirthFields = form.watch(['birthDay', 'birthMonth', 'birthYear']);
+
+  useEffect(() => {
+    const [day, month, year] = watchBirthFields;
+    if (day && month && year) {
+      const birthDate = new Date(
+        Number.parseInt(year),
+        Number.parseInt(month) - 1,
+        Number.parseInt(day),
+      );
+      const calculatedAge = differenceInYears(new Date(), birthDate);
+      setAge(calculatedAge);
+    } else {
+      setAge(null);
+    }
+  }, [watchBirthFields]);
+
+  const combineBirthDate = (day: string, month: string, year: string) => {
+    if (day && month && year) {
+      const date = new Date(
+        Number.parseInt(year),
+        Number.parseInt(month) - 1,
+        Number.parseInt(day),
+      );
+      return isNaN(date.getTime()) ? null : date;
+    }
+    return null;
+  };
+
   async function onSubmit(data: FormValues) {
+    const birthDate = combineBirthDate(data.birthDay, data.birthMonth, data.birthYear);
+    if (!birthDate) {
+      form.setError('birthDay', { type: 'manual', message: 'Fecha de nacimiento inválida' });
+      return;
+    }
+
+    const submissionData = {
+      ...data,
+      birthDate,
+    };
+
     setIsSubmitting(true);
 
     try {
       // Aquí iría la lógica para enviar los datos al servidor
-      console.log(data);
+      console.log(submissionData);
 
       // Simulamos un retraso para mostrar el estado de carga
       await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -189,7 +262,7 @@ export function AthleteRegistrationForm() {
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6">
               <FormField
                 control={form.control}
                 name="applicantName"
@@ -204,45 +277,88 @@ export function AthleteRegistrationForm() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="birthDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Fecha de Nacimiento:</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
+              <div className="grid grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="birthDay"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dia de nacimiento</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="DD" min="1" max="31" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="birthMonth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mes</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <Button
-                            variant={'outline'}
-                            className={cn(
-                              'w-full pl-3 text-left font-normal',
-                              !field.value && 'text-muted-foreground',
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, 'dd/MMMM/yyyy', { locale: es })
-                            ) : (
-                              <span>Seleccione una fecha</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccione el mes" />
+                          </SelectTrigger>
                         </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
-                          initialFocus
+                        <SelectContent>
+                          {[
+                            'Enero',
+                            'Febrero',
+                            'Marzo',
+                            'Abril',
+                            'Mayo',
+                            'Junio',
+                            'Julio',
+                            'Agosto',
+                            'Septiembre',
+                            'Octubre',
+                            'Noviembre',
+                            'Diciembre',
+                          ].map((month, index) => (
+                            <SelectItem key={index} value={(index + 1).toString()}>
+                              {month}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="birthYear"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Año</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="YYYY"
+                          min="1900"
+                          max={new Date().getFullYear()}
+                          {...field}
                         />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {age !== null && (
+                <div className="text-sm text-muted-foreground">
+                  Edad calculada: {age} años
+                  {age < 18 && (
+                    <span className="ml-2 text-red-500">
+                      (Se requiere el nombre de al menos uno de los padres)
+                    </span>
+                  )}
+                </div>
+              )}
 
               <FormField
                 control={form.control}
