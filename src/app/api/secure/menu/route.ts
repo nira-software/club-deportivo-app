@@ -5,22 +5,29 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/_auth-option';
 
 const navMain: NavItem[] = [
   {
-    title: 'Playground',
+    title: 'Dashboard',
     url: '#',
-    icon: 'SquareTerminal',
+    icon: 'Home',
     isActive: true,
     items: [
       {
-        title: 'History',
-        url: '#',
+        title: 'Inicio',
+        url: '/secure/dashboard',
+      },
+    ],
+  },
+  {
+    title: 'Atletas',
+    url: '#',
+    icon: 'SquareTerminal',
+    items: [
+      {
+        title: 'Registro',
+        url: '/secure/athlete/add',
       },
       {
-        title: 'Starred',
-        url: '#',
-      },
-      {
-        title: 'Settings',
-        url: '#',
+        title: 'Consultar',
+        url: '/secure/athlete',
       },
     ],
   },
