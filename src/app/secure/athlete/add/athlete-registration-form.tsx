@@ -107,6 +107,10 @@ const formSchema = z
         message: 'Correo electrónico inválido.',
       })
       .optional(),
+    country: z.string().refine((value) => value !== '', {
+      message: 'El país es requerido.',
+    }),
+    otherCountry: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -122,6 +126,14 @@ const formSchema = z
       message: 'Para menores de 18 años, se requiere el nombre de al menos uno de los padres.',
       path: ['fatherName'],
     },
+  )
+  .refine(
+    (data) =>
+      data.country !== 'otro' || (data.country === 'otro' && data.otherCountry.trim() !== ''),
+    {
+      message: 'Debe ingresar el nombre del país si selecciona "Otro".',
+      path: ['otherCountry'],
+    },
   );
 
 type FormValues = z.infer<typeof formSchema>;
@@ -129,6 +141,7 @@ type FormValues = z.infer<typeof formSchema>;
 export function AthleteRegistrationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [age, setAge] = useState<number | null>(null);
+  const [isOtherCountry, setIsOtherCountry] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -145,10 +158,13 @@ export function AthleteRegistrationForm() {
       emergencyContact: '',
       phone: '',
       email: '',
+      country: '',
+      otherCountry: '',
     },
   });
 
   const watchBirthFields = form.watch(['birthDay', 'birthMonth', 'birthYear']);
+  const watchCountry = form.watch('country');
 
   useEffect(() => {
     const [day, month, year] = watchBirthFields;
@@ -164,6 +180,10 @@ export function AthleteRegistrationForm() {
       setAge(null);
     }
   }, [watchBirthFields]);
+
+  useEffect(() => {
+    setIsOtherCountry(watchCountry === 'otro');
+  }, [watchCountry]);
 
   const combineBirthDate = (day: string, month: string, year: string) => {
     if (day && month && year) {
@@ -187,6 +207,7 @@ export function AthleteRegistrationForm() {
     const submissionData = {
       ...data,
       birthDate,
+      country: data.country === 'otro' ? data.otherCountry : data.country,
     };
 
     setIsSubmitting(true);
@@ -390,6 +411,56 @@ export function AthleteRegistrationForm() {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="country"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>País:</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione el país" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {[
+                          'El Salvador',
+                          'Guatemala',
+                          'Belice',
+                          'Honduras',
+                          'Nicaragua',
+                          'Costa Rica',
+                          'Panamá',
+                          'otro',
+                        ].map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {country === 'otro' ? 'Otro' : country}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {isOtherCountry && (
+                <FormField
+                  control={form.control}
+                  name="otherCountry"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nombre del país:</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nombre del país" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}
