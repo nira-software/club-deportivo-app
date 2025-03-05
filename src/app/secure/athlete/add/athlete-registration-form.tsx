@@ -129,7 +129,7 @@ const formSchema = z
   )
   .refine(
     (data) =>
-      data.country !== 'otro' || (data.country === 'otro' && data.otherCountry.trim() !== ''),
+      data.country !== 'otro' || (data.country === 'otro' && data.otherCountry?.trim() !== ''),
     {
       message: 'Debe ingresar el nombre del país si selecciona "Otro".',
       path: ['otherCountry'],
@@ -301,13 +301,14 @@ export function AthleteRegistrationForm() {
                 )}
               />
 
+              <p className={'text-sm'}>Fecha de Nacimiento</p>
               <div className="grid grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="birthDay"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Dia de nacimiento</FormLabel>
+                      <FormLabel>Dia</FormLabel>
                       <FormControl>
                         <Input type="number" placeholder="DD" min="1" max="31" {...field} />
                       </FormControl>
